@@ -14,7 +14,7 @@ def footer_home():
 
 
 def footer_dashboard():
-    logo_url = "https://img.icons8.com/?size=100&id=ij6f4GUUwLE8&format=png&color=000000"
+    logo_url = "https://img.icons8.com/?size=100&id=GhCFK2zsYuTN&format=png&color=000000"
     
     st.markdown(f"""
         <div style="margin-top:2rem; display:flex; gap:6px; justify-content:center; items-align:center">
