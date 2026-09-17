@@ -5,7 +5,8 @@ from src.ui.base_layout import style_background_dashboard, style_base_layout
 from src.components.header import header_dashboard
 from src.components.footer import footer_dashboard
 from src.components.subject_card import subject_card
-from src.database.db import check_teacher_exists, create_teacher, teacher_login, get_teacher_subjects, get_attendance_for_teacher
+from src.database.db import check_teacher_exists, create_teacher, teacher_login, get_teacher_subjects, get_attendance_for_teacher, get_teacher_username
+from src.services.account_recovery import get_recovery_request, reset_password, send_password_recovery, send_username_recovery
 from src.components.dialog_create_subject import create_subject_dialog
 from src.components.dialog_share_subject import share_subject_dialog
 from src.components.dialog_add_photo import add_photos_dialog
@@ -27,12 +28,80 @@ def teacher_screen():
     style_background_dashboard()
     style_base_layout()
 
-    if "teacher_data" in st.session_state:
+    recovery_type = st.query_params.get("recovery")
+    recovery_token = st.query_params.get("token")
+
+    if recovery_type and recovery_token:
+        teacher_recovery_screen(recovery_type, recovery_token)
+    elif "teacher_data" in st.session_state:
         teacher_dashboard()
     elif 'teacher_login_type' not in st.session_state or st.session_state.teacher_login_type=="login":
         teacher_screen_login()
     elif st.session_state.teacher_login_type == "register":
         teacher_screen_register()
+    elif st.session_state.teacher_login_type == "recovery":
+        teacher_screen_recovery_request()
+
+
+def teacher_recovery_screen(recovery_type, recovery_token):
+    st.header("Account recovery", text_alignment="center")
+    recovery_request = get_recovery_request(recovery_type, recovery_token)
+
+    if not recovery_request:
+        st.error("This recovery link is invalid or has expired.")
+        if st.button("Return to login", type="primary", width="stretch"):
+            st.query_params.clear()
+            st.session_state.teacher_login_type = "login"
+            st.rerun()
+        return
+
+    if recovery_type == "username":
+        username = get_teacher_username(recovery_request["teacher_id"])
+        st.success(f"Your username is **{username}**")
+        if st.button("Return to login", type="primary", width="stretch"):
+            st.query_params.clear()
+            st.session_state.teacher_login_type = "login"
+            st.rerun()
+        return
+
+    st.write("Choose a new password for your teacher account.")
+    new_password = st.text_input("New password", type="password", key="recovery_new_password")
+    confirm_password = st.text_input("Confirm new password", type="password", key="recovery_confirm_password")
+    if st.button("Reset password", type="primary", width="stretch"):
+        if len(new_password) < 8:
+            st.error("Password must be at least 8 characters.")
+        elif new_password != confirm_password:
+            st.error("Passwords do not match.")
+        elif reset_password(recovery_request["id"], recovery_request["teacher_id"], new_password):
+            st.success("Password changed successfully. You can now log in.")
+            st.query_params.clear()
+            st.session_state.teacher_login_type = "login"
+        else:
+            st.error("This recovery link has already been used.")
+
+
+def teacher_screen_recovery_request():
+    st.header("Recover your account", text_alignment="center")
+    st.write("Enter the email address saved on your teacher account. We will send a secure link.")
+    email = st.text_input("Email address", placeholder="ananya@example.com")
+    recovery_type = st.radio("What do you need?", ["Reset password", "Recover username"], horizontal=True)
+
+    if st.button("Send recovery email", type="primary", width="stretch"):
+        if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+            st.error("Enter a valid email address.")
+        else:
+            try:
+                if recovery_type == "Reset password":
+                    send_password_recovery(email)
+                else:
+                    send_username_recovery(email)
+                st.success("If an account uses that email, a recovery link has been sent.")
+            except Exception:
+                st.error("We could not send the recovery email right now. Check the mail settings and try again.")
+
+    if st.button("Back to login", type="tertiary", width="stretch"):
+        st.session_state.teacher_login_type = "login"
+        st.rerun()
 
 
 
@@ -334,6 +403,10 @@ def teacher_screen_login():
         if st.button('Register Instead', type="primary", icon=':material/passkey:', width='stretch'):
             st.session_state.teacher_login_type = 'register'
 
+    if st.button("Forgot username or password?", type="tertiary", width="stretch"):
+        st.session_state.teacher_login_type = "recovery"
+        st.rerun()
+
     footer_dashboard()
 
 
@@ -347,7 +420,7 @@ def register_teacher(teacher_username, teacher_name, teacher_pass, teacher_pass_
         return False, "Password doesn't match"
     
     try:
-        create_teacher(teacher_username, teacher_pass, teacher_name)
+        create_teacher(teacher_username, teacher_pass, teacher_name, st.session_state.registration_email.strip().lower())
         return True, "Sucessfully Created! Login Now"
     except Exception as e:
         return False, "Unexpected Error!"
@@ -374,6 +447,8 @@ def teacher_screen_register():
 
     teacher_name = st.text_input("Enter name", placeholder='Ananya Roy')
 
+    teacher_email = st.text_input("Enter email", placeholder='ananya@example.com', key="registration_email")
+
     teacher_pass = st.text_input("Enter password", type='password', placeholder="Enter password")
 
     teacher_pass_confirm = st.text_input("Confirm your password", type='password', placeholder="Enter password")
@@ -384,6 +459,9 @@ def teacher_screen_register():
 
     with btnc1:
         if st.button('Register now', icon=':material/passkey:', shortcut='control+enter', width='stretch'):
+            if not teacher_email or "@" not in teacher_email:
+                st.error("Enter a valid email address for account recovery.")
+                return
             success, message = register_teacher(teacher_username, teacher_name, teacher_pass, teacher_pass_confirm)
             if success:
                 st.success(message)
