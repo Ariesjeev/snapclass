@@ -122,6 +122,16 @@ Add your Supabase credentials in `.streamlit/secrets.toml`:
 ```toml
 SUPABASE_URL = "your-project-url"
 SUPABASE_KEY = "your-anon-or-service-key"
+# Public URL where the running Streamlit app can receive the recovery link.
+APP_URL = "http://localhost:8501"
+
+# Gmail SMTP: use a Google App Password, not your normal Gmail password.
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USERNAME = "your-gmail-address@gmail.com"
+SMTP_PASSWORD = "your-16-character-app-password"
+SMTP_FROM = "SnapClass <your-gmail-address@gmail.com>"
+
 ```
 
 > Make sure your Supabase tables match what the app expects (teachers, students, subjects, enrollments and attendance logs).
