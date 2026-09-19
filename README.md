@@ -85,8 +85,12 @@ snapclass/
 ├── app.py               # Entry point: routing between home, teacher and student screens
 ├── requirements.txt     # Python dependencies
 └── src/
+    ├── components/      # Reusable UI pieces (e.g. auto-enroll dialog)
+    ├── database/        # Supabase connection and data access
+    ├── pipelines/       # Face recognition and voice processing pipelines
     ├── screens/         # Home, teacher and student screens
-    └── components/      # Reusable UI pieces (e.g. auto-enroll dialog)
+    ├── services/        # Business logic (auth, account recovery, etc.)
+    └── ui/              # Shared styling and UI helpers
 ```
 
 ## 🚀 Getting Started
